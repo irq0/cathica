@@ -1,6 +1,7 @@
 (ns cathica.plumb
   (:require
    [cathica.logging :refer [with-logging-status]]
+   [cathica.ui :as ui]
    [clojure.java.io :as io]
    [clojure.java.shell :refer [sh]]
    [clojure.string :as string]
@@ -47,6 +48,22 @@
       (do
         (log/info "Executing first match: " (first matched-rules))
         (execute-rule message (first matched-rules))))))
+
+(defn plumb-with-picker [rules message]
+  (log/info "Plumbing message: " message)
+  (let [matched-rules (->> rules
+                        (map #(% message))
+                        (filter map?))
+        picked (ui/picker matched-rules message)]
+    (log/infof "%s/%s rules matched" (count matched-rules) (count rules))
+
+    (if (nil? picked)
+      (desktop-notification "cathica:plumb ERROR"
+        (format "Nothing selected %s" (pr-str message)))
+      (do
+        (log/info "Executing: " picked)
+        (execute-rule message picked)))))
+
 
 (defn type-is-text [type]
   (#{"STRING" "UTF8_STRING" "TEXT" "text/plain"} type))
