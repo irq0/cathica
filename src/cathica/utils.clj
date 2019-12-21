@@ -38,15 +38,16 @@
       (string/trim out))))
 
 (defn git-resolve-file [wdir s]
-  (let [git-dir (git-git-dir wdir)
-        repo-dir (git-repo-dir wdir)
-        {:keys [out exit]}
-        (sh "git" "--git-dir" git-dir "ls-files"
-            :dir wdir)]
-    (when (= 0 exit)
-      (->> (string/split out #"\n")
-           (some #(when (re-find (re-pattern s) %1) %1))
-           (is-file repo-dir)))))
+  (when-not (empty? wdir)
+    (let [git-dir (git-git-dir wdir)
+          repo-dir (git-repo-dir wdir)
+          {:keys [out exit]}
+          (sh "git" "--git-dir" git-dir "ls-files"
+              :dir wdir)]
+      (when (= 0 exit)
+        (->> (string/split out #"\n")
+             (some #(when (re-find (re-pattern s) %1) %1))
+             (is-file repo-dir))))))
 
 (defn current-window-info []
   (-> (sh "current-window") :out edn/read-string))
