@@ -86,7 +86,7 @@
 
 (defmacro rule
   "Define plumbing rule"
-  [{:keys [src type data start arg] :as rule}]
+  [name {:keys [src type data start arg] :as rule}]
   (let [type-fn (case type
                   :text type-is-text
                   :url type-is-url
@@ -125,7 +125,7 @@
                  arg#)
              (do
                (log/info "Rule matches: " (quote ~rule))
-               {:rule (quote ~rule)
+               {:rule (assoc (quote ~rule) :name ~name)
                 :match-context {:matches matches# :n-matches n-matches# :arg arg#}
                 :execute (fn [] ~start)})
              nil))

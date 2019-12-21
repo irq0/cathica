@@ -26,7 +26,9 @@
                  [com.novemberain/pantomime "2.11.0"]
                  ;; for dbus-java
                  [com.github.hypfvieh/libmatthew "0.8.3"]
+                 [clj-http "3.10.0"]
                  [byte-streams "0.2.4"]
                  [robert/hooke "1.3.0"]
+                 [cheshire "5.9.0"]
                  [seesaw "1.5.0"]
                  [org.jfxtras/jfxtras-all "10.0-r1"]])
