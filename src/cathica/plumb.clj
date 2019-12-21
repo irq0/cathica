@@ -93,7 +93,7 @@
                   :image type-is-image
                   :default type-is-text)
 
-        data-match (if (nil? data)
+        data-re-match (if (nil? data)
                      '(constantly true)
                      `#(re-find ~data %))
         src-match (if (nil? src)
@@ -105,12 +105,18 @@
                     `#(~(first arg) (:wdir %) ~(second arg)))]
     `(fn [message#]
        (try
-         (let [re-found# (some (fn [[type# data#]]
-                                 (when (~type-fn type#)
-                                   (~data-match data#)))
-                               (:data message#))
-               matches# (if (coll? re-found#) re-found# [re-found#])
+         (let [[match-type# match-data#]
+               (some (fn [[type# data#]]
+                       (when (~type-fn type#)
+                         (if (string? data#)
+                           [type# (~data-re-match data#)]
+                           [type# data#])))
+                     (:data message#))
+
+               matches# (if (coll? match-data#) match-data# [match-data#])
                n-matches# (count matches#)
+               ~'$DATA match-data#
+               ~'$TYPE match-type#
                ~'$0 (if (> n-matches# 0) (nth matches# 0) "")
                ~'$1 (if (> n-matches# 1) (nth matches# 1) "")
                ~'$2 (if (> n-matches# 2) (nth matches# 2) "")
@@ -120,7 +126,7 @@
                arg# (~arg-match message#)
                ~'$arg (str arg#)]
            (if (and
-                 (some? re-found#)
+                 (some? match-data#)
                  (~src-match message#)
                  arg#)
              (do

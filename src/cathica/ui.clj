@@ -84,7 +84,9 @@
                                       :icon
                                       (when-let [image-data (get-in message [:data "image/png"])]
                                         (javax.swing.ImageIcon.
-                                         (bs/to-byte-array image-data))))])
+                                         (bs/to-byte-array image-data))
+                                        (.reset image-data)
+                                        ))])
                                (text :text ""
                                      :id :rule-preview
                                      :multi-line? true)])))
