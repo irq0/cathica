@@ -15,6 +15,11 @@
    [mount.core :as mount :refer [defstate]]
    [clojure.edn :as edn]))
 
+(def terminal-re #"urxvt256c|Alacritty|main")
+(def web-browser-re #"Navigator|google-chrome")
+(def bugtracker-base-url "https://mantis/view.php?id=")
+(def gerrit-change-base-url "https://gerrit/#/q/")
+
 (defonce selection (.getSystemSelection (java.awt.Toolkit/getDefaultToolkit)))
 
 (defn set-clipboard-string [cb s]
@@ -106,10 +111,10 @@
       :data #".*[a-zA-Z0-9 \-_]+ \<([a-zA-Z0-9\._%+\-]+@[a-zA-Z0-9\.\-]+\.[a-zA-Z]+)\>.*"
       :start (sh "gmail" $0)})
    (rule
-    {:name "Open Quobyte Log Filename in Emacs"
+    {:name "Open Log Filename in Emacs"
      :type :text
      :data #"…([\w_\/]+\.\w+):(\d+)"
-     :src #"urxvt256c"
+     :src terminal-re
      :arg (git-resolve-file $1)
      :start (emacs-open $arg [(str "+" $2 ":" 0)])})
 
@@ -117,55 +122,53 @@
     {:name "Open Compile Error in Emacs"
      :type :text
      :data #"^../([a-zA-Z0-9_\-\:\. \(\)\/]+):(\d+):(\d+):\s+(\w+):\s+(.+)"
-     :src #"urxvt256c"
+     :src terminal-re
      :arg (is-file $1)
      :start (do
               (desktop-notification (str "Compiler " $4 " in " $1 " line " $2) $5 :expire-time 0)
               (emacs-open $arg [(str "+" $2 ":" $3)]))})
    (rule
-     {:name "Show timestamp range"
-      :type :text
-      :data #"(?s).+_timestamp_ms: (\d+)\n.+_timestamp_ms: (\d+)"
-      :start (let [start (tc/from-long (Long/parseLong $1))
-                   end (tc/from-long (Long/parseLong $2))
-                   start-local (time/to-time-zone start (time/default-time-zone))
-                   end-local (time/to-time-zone end (time/default-time-zone))]
-               (desktop-notification "ts range:"
-                 (str
-                   "UTC:      "
-                   (tf/unparse (:mysql tf/formatters) start)
-                   " - "
-                   (tf/unparse (:mysql tf/formatters) end)
-                   "\n"
-                   "Local:    "
-                   (tl/format-local-time start-local :mysql)
-                   " - "
-                   (tl/format-local-time end-local :mysql)
-                   "\n"
-                   "Duration: "
-                   (format-interval (time/interval start end)))
-                 :expire-time 0
-                 ))})
-
+    {:name "Show timestamp range"
+     :type :text
+     :data #"(?s).+_timestamp_ms: (\d+)\n.+_timestamp_ms: (\d+)"
+     :start (let [start (tc/from-long (Long/parseLong $1))
+                  end (tc/from-long (Long/parseLong $2))
+                  start-local (time/to-time-zone start (time/default-time-zone))
+                  end-local (time/to-time-zone end (time/default-time-zone))]
+              (desktop-notification "ts range:"
+                                    (str
+                                     "UTC:      "
+                                     (tf/unparse (:mysql tf/formatters) start)
+                                     " - "
+                                     (tf/unparse (:mysql tf/formatters) end)
+                                     "\n"
+                                     "Local:    "
+                                     (tl/format-local-time start-local :mysql)
+                                     " - "
+                                     (tl/format-local-time end-local :mysql)
+                                     "\n"
+                                     "Duration: "
+                                     (format-interval (time/interval start end)))
+                                    :expire-time 0))})
 
    (rule
-     {:name "Quobyte timestamps"
-      :type :text
-      :data #".*(timestamp|time)_(ms|s): (\d+)"
-      :start (let [unit-multiplier (case $2
-                                     "ms" 1
-                                     "s" 1000)
-                   ts (tc/from-long (* unit-multiplier (Long/parseLong $3)))
-                   show-ts ["UTC" "Europe/Berlin" "US/Pacific" "US/Central" "US/Eastern"]
-                   msg (string/join "\n"
-                         (map #(str % ": "
-                                 (tl/format-local-time (time/to-time-zone ts (time/time-zone-for-id %)) :mysql))
-                           show-ts))]
-               (desktop-notification (str "ts: " $0) msg :expire-time 0)
-               (set-clipboard-string selection msg))})
+    {:name "Convert Qtimestamps"
+     :type :text
+     :data #".*(timestamp|time)_(ms|s): (\d+)"
+     :start (let [unit-multiplier (case $2
+                                    "ms" 1
+                                    "s" 1000)
+                  ts (tc/from-long (* unit-multiplier (Long/parseLong $3)))
+                  show-ts ["UTC" "Europe/Berlin" "US/Pacific" "US/Central" "US/Eastern"]
+                  msg (string/join "\n"
+                                   (map #(str % ": "
+                                              (tl/format-local-time (time/to-time-zone ts (time/time-zone-for-id %)) :mysql))
+                                        show-ts))]
+              (desktop-notification (str "ts: " $0) msg :expire-time 0)
+              (set-clipboard-string selection msg))})
 
    (rule
-    {:name "Numbers with time units"
+    {:name "Convert Duration (to clipboard)"
      :type :text
      :data #"(\d+)(ms|ns|s)"
      :start (let [unit-multiplier (case $2
@@ -177,53 +180,48 @@
                   msg (human-duration-short
                        (org.joda.time.Period. (long millis)))]
               (set-clipboard-string selection msg)
-              (desktop-notification (str "duration: " msg)  :expire-time 0)
-              )})
+              (desktop-notification (str "duration: " msg)  :expire-time 0))})
 
    (rule
-     {:name "Browse svg"
-      :type :text
-      :data #"(file://)?([a-zA-Z0-9_\-\: \/]+\.svg|SVG)"
-      :arg (is-file $2)
-      :start (browse $arg)})
+    {:name "Browse svg"
+     :type :text
+     :data #"(file://)?([a-zA-Z0-9_\-\: \/]+\.svg|SVG)"
+     :arg (is-file $2)
+     :start (browse $arg)})
    (rule
-     {:name "dired"
-      :type :text
-      :data #".*"
-      :arg (is-dir $0)
-      :start (emacs-open $arg)})
+    {:name "dired"
+     :type :text
+     :data #".*"
+     :arg (is-dir $0)
+     :start (emacs-open $arg)})
    (rule
-     {:name "emacs edit"
-      :type :text
-      :data #"(file://)?([a-zA-Z0-9_\-\:\. \(\)\/]+)"
-      :arg (is-file $2)
-      :start (emacs-open $arg)})
+    {:name "emacs edit"
+     :type :text
+     :data #"(file://)?([a-zA-Z0-9_\-\:\. \(\)\/]+)"
+     :arg (is-file $2)
+     :start (emacs-open $arg)})
    (rule
-     {:name "commit in magit"
-      :type :text
-      :src #"google-chrome|mail\.google\.com__.*|emacs|Alacritty|urxvt256c"
-      :data #"[0-9a-f]{5,}"
-      :start (sh "open_magit_commit" $0)})
+    {:name "commit in magit"
+     :type :text
+     :data #"[0-9a-f]{5,}"
+     :start (sh "open_magit_commit" $0)})
    (rule
-     {:name "c++: search cppreference for std::"
-      :type :text
-      :data #"std::[a-zA-Z]+"
-      :start (browse (str "http://en.cppreference.com/mwiki/index.php?title=Special%3ASearch&search=" $0))})
+    {:name "c++: search cppreference for std::"
+     :type :text
+     :data #"std::[a-zA-Z]+"
+     :start (browse (str "http://en.cppreference.com/mwiki/index.php?title=Special%3ASearch&search=" $0))})
    (rule
-     {:name "Browse RFC"
-      :type :text
-      :data #"(RFC|rfc)[ ]*([0-9]+)"
-      :start (browse (str "https://www.rfc-editor.org/rfc/rfc" $2 ".txt"))})
+    {:name "Browse RFC"
+     :type :text
+     :data #"(RFC|rfc)[ ]*([0-9]+)"
+     :start (browse (str "https://www.rfc-editor.org/rfc/rfc" $2 ".txt"))})
    (rule
-     {:name "Search dict"
-      :type :text
-      :src #"google-chrome"
-      :data #"([a-zA-Z]+)"
-      :start (sh "search_dict" $1)})
+    {:name "Search dict"
+     :type :text
+     :data #"([a-zA-Z]+)"
+     :start (sh "search_dict" $1)})
    (rule
-     {:name "Search web"
-      :type :text
-      :src #"google-chrome"
-      :data #"([a-zA-Z ]+)"
-      :start (sh "search_web" $1)})
-])
+    {:name "Search web"
+     :type :text
+     :data #"([a-zA-Z ]+)"
+     :start (sh "search_web" $1)})])
