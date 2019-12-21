@@ -5,6 +5,7 @@
    [seesaw.font :refer [font]]
    [seesaw.keymap :refer [map-key]]
    [taoensso.timbre :as log]
+   [byte-streams :as bs]
    [clojure.pprint :refer [pprint]]))
 
 
@@ -72,10 +73,18 @@
                             :model choices)
                        (.setCellRenderer (make-cell-renderer))))
               :center (vertical-panel
-                       :preferred-size [500 :by 500]
-                       :items [(text :text (with-out-str (pprint message))
+                       :preferred-size [600 :by 800]
+                       :items [(scrollable (text :text (with-out-str (pprint message))
                                      :id :message
-                                     :multi-line? true)
+                                     :multi-line? true))
+                               (grid-panel
+
+                                :items [
+                                (label :id :image
+                                      :icon
+                                      (when-let [image-data (get-in message [:data "image/png"])]
+                                        (javax.swing.ImageIcon.
+                                         (bs/to-byte-array image-data))))])
                                (text :text ""
                                      :id :rule-preview
                                      :multi-line? true)])))
