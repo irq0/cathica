@@ -11,16 +11,17 @@
    ))
 
 (defn expand-file [wdir s]
-  (if (.isAbsolute (io/as-file s))
-    (.getAbsoluteFile (io/as-file s))
-    (.getAbsoluteFile (java.io.File. wdir s))))
+  (when-not (or (nil? wdir) (nil? s))
+    (if (.isAbsolute (io/as-file s))
+      (.getAbsoluteFile (io/as-file s))
+      (.getAbsoluteFile (java.io.File. wdir s)))))
 
 (defn is-file [wdir s]
-  (let [file (expand-file wdir s)]
+  (when-let [file (expand-file wdir s)]
     (when (.isFile file) file)))
 
 (defn is-dir [wdir s]
-  (let [file (expand-file wdir s)]
+  (when-let [file (expand-file wdir s)]
     (when (.isDirectory file) file)))
 
 (defn git-git-dir [some-dir]

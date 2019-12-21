@@ -109,9 +109,13 @@
 
 (defn picker [choices message]
   (let [p (promise)]
-    (invoke-later
-     (-> (make-picker-frame choices message)
-         (add-behavior p)
-         pack!
-         show!))
-    @p))
+    (try
+      (invoke-now
+       (-> (make-picker-frame choices message)
+           (add-behavior p)
+           pack!
+           show!))
+      (catch Exception e
+        (log/warn e "Picker failed" choices message)
+        (deliver p nil)))
+      @p))
