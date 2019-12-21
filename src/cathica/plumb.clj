@@ -95,7 +95,7 @@
 
         data-match (if (nil? data)
                      '(constantly true)
-                     `#(re-find ~data (:data %)))
+                     `#(re-find ~data %))
         src-match (if (nil? src)
                     '(constantly true)
                     `#(re-find ~src (:src %)))
@@ -105,7 +105,10 @@
                     `#(~(first arg) (:wdir %) ~(second arg)))]
     `(fn [message#]
        (try
-         (let [re-found# (~data-match message#)
+         (let [re-found# (some (fn [[type# data#]]
+                                 (when (~type-fn type#)
+                                   (~data-match data#)))
+                               (:data message#))
                matches# (if (coll? re-found#) re-found# [re-found#])
                n-matches# (count matches#)
                ~'$0 (if (> n-matches# 0) (nth matches# 0) "")
@@ -117,7 +120,6 @@
                arg# (~arg-match message#)
                ~'$arg (str arg#)]
            (if (and
-                 (~type-fn (:type message#))
                  (some? re-found#)
                  (~src-match message#)
                  arg#)
