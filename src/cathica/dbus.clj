@@ -53,8 +53,12 @@
              path
              (reify org.irq0.cathica.PlumbInterface
                (^void clipboard [^DBusInterface this]
-                (core/plumb-current-clipboard))
+                (core/plumb-current-clipboard :with-picker? true))
+               (^void clipboard_default_action [^DBusInterface this]
+                (core/plumb-current-clipboard :with-picker? false))
                (^void string [^DBusInterface this ^String s]
-                (core/plumb-string s))))
+                (core/plumb-string s :with-picker? true))
+               (^void string_default_action [^DBusInterface this ^String s]
+                (core/plumb-string s :with-picker? false))))
            path)
   :stop (.unExportObject dbus dbus-signal-handler))

@@ -34,7 +34,9 @@
         (with-out-str (pprint/pprint rule))))
     (execute)))
 
-(defn plumb [rules message]
+(defn plumb-first
+  "Find first matching rule - execute that"
+  [rules message]
   (log/info "Plumbing message: " message)
   (let [matched-rules (->> rules
                         (map #(% message))
@@ -49,7 +51,9 @@
         (log/info "Executing first match: " (first matched-rules))
         (execute-rule message (first matched-rules))))))
 
-(defn plumb-with-picker [rules message]
+(defn plumb-with-picker
+  "Match all rules, show picker gui, execute selection"
+  [rules message]
   (log/info "Plumbing message: " message)
   (let [matched-rules (->> rules
                         (map #(% message))
