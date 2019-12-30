@@ -264,9 +264,22 @@
                   msg (human-duration-short
                        (org.joda.time.Period. (long millis)))]
               (set-clipboard-string selection msg)
-              (desktop-notification (str "duration: " msg)  :expire-time 0))})
-   (rule "Browse svg"
-    {:type :text
+              (desktop-notification (str "duration: " $0) msg :expire-time 0))})
+   (rule "Convert US Mass Unit"
+         {:type :text
+          :data #"([\d/ ]+)(ounce|pound|teaspoon|tablespoon|cup|pint)s?"
+          :start (let [gram-multiplier (case $2
+                                      "ounce" 28.349523125
+                                      "pound" 453.59237
+                                      "teaspoon" 4.93
+                                      "tablespoon" 14.79
+                                      "pint" 568.26
+                                      "cup" 284.13)
+                       grams (* (edn/read-string $1) gram-multiplier)
+                       msg (format "%.2fg" grams)]
+                   (set-clipboard-string selection msg)
+                   (desktop-notification $0 msg :expire-time 0))})
+   (rule "Browse svg" {:type :text
      :data #"(file://)?([a-zA-Z0-9_\-\: \/]+\.svg|SVG)"
      :arg (is-file $2)
      :start (browse $arg)})
