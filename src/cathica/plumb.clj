@@ -28,10 +28,10 @@
 
 (defn execute-rule [message rule]
   (let [{:keys [rule execute match-context]} rule]
-    (desktop-notification "cathica:plumb INFO"
-      (format "%s\n⇊\n\n%s"
-        (with-out-str (pprint/pprint message))
-        (with-out-str (pprint/pprint rule))))
+    ;; (desktop-notification "cathica:plumb INFO"
+    ;;   (format "%s\n⇊\n\n%s"
+    ;;     (with-out-str (pprint/pprint message))
+    ;;     (with-out-str (pprint/pprint rule))))
     (execute)))
 
 (defn plumb-first
