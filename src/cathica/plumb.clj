@@ -82,6 +82,8 @@
 ;; special rule things:
 ;; $1 is first regex group in data
 ;; $arg is the result of the arg function
+;; $DATA is the raw data from clipboard
+;; $TYPE is the clipboard type (e.g STRING or text/plain) matched against type
 ;; - always called with (arg-function wdir $0..$5)
 ;; type shortcuts:
 ;; :text matches test types
