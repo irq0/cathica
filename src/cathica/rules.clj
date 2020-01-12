@@ -301,6 +301,15 @@
                        msg (format "%.2fg" grams)]
                    (set-clipboard-string selection msg)
                    (desktop-notification $0 msg :expire-time 0))})
+   (rule "Convert Temperature Units (℃, ℉)"
+         {:type :text
+          :data #"([\d,\.]+)\s*(degree|°|℃|℉|celsius|farenheit)"
+          :start (let [value (log/spy (edn/read-string (log/spy $1)))
+                       c-to-f (float (+ (* value 9/5) 32))
+                       f-to-c (float (* (- value 32) 5/9))
+                       msg (format "℃ ➙ ℉ %.2f\n℉ ➙ ℃ %.2f" c-to-f f-to-c)]
+                   (desktop-notification $0 msg :expire-time 0))})
+
    (rule "Browse svg" {:type :text
                        :data #"(file://)?([a-zA-Z0-9_\-\: \/]+\.svg|SVG)"
                        :arg (is-file $2)
