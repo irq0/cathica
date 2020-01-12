@@ -124,17 +124,17 @@
           :data #"std::[a-zA-Z]+"
           :start (browse (str "http://en.cppreference.com/mwiki/index.php?title=Special%3ASearch&search=" $0))})
    (rule "Browse RFC"
-    {:type :text
-     :data #"(RFC|rfc)[ ]*([0-9]+)"
-     :start (browse (str "https://www.rfc-editor.org/rfc/rfc" $2 ".txt"))})
-   (rule "Search Dictionary"
-    {:type :text
-     :data #"(?U).+"
-     :start (sh "search_dict" (string/trim $0))})
+         {:type :text
+          :data #"(RFC|rfc)[ ]*([0-9]+)"
+          :start (browse (str "https://www.rfc-editor.org/rfc/rfc" $2 ".txt"))})
    (rule "Search Web"
-    {:type :text
-     :data #"(?U).+"
-     :start (sh "search_web" (string/trim $0))})])
+         {:type :text
+          :data #"(?U).+"
+          :start (sh "search_web" (string/trim $0))})
+   (rule "Search Dictionary"
+         {:type :text
+          :data #"(?U).+"
+          :start (sh "search_dict" (string/trim $0))})])
 
 (def +rules+
   [(rule "Google Calendar"
