@@ -112,17 +112,17 @@
 
 (def +specialized-search-rules+
   [(rule "Manits Issue"
-    {:type :text
-     :data #"#([0-9]+)"
-     :start (browse (str bugtracker-base-url $1))})
+         {:type :text
+          :data #"#([0-9]+)"
+          :start (browse (str bugtracker-base-url $1))})
    (rule "Gerrit Change"
-    {:type :text
-     :data #"Change-Id: ([a-zA-Z0-9]+)"
-     :start (browse (str gerrit-change-base-url $1))})
+         {:type :text
+          :data #"Change-Id: ([a-zA-Z0-9]+)"
+          :start (browse (str gerrit-change-base-url $1))})
    (rule "c++: search cppreference for std::"
-    {:type :text
-     :data #"std::[a-zA-Z]+"
-     :start (browse (str "http://en.cppreference.com/mwiki/index.php?title=Special%3ASearch&search=" $0))})
+         {:type :text
+          :data #"std::[a-zA-Z]+"
+          :start (browse (str "http://en.cppreference.com/mwiki/index.php?title=Special%3ASearch&search=" $0))})
    (rule "Browse RFC"
     {:type :text
      :data #"(RFC|rfc)[ ]*([0-9]+)"
@@ -138,103 +138,103 @@
 
 (def +rules+
   [(rule "Google Calendar"
-    {:type :text
-     :data #"(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}:\d{2}Z?"
-     :start (browse (format "https://calendar.google.com/calendar/r/week/%s/%s/%s" $1 $2 $3))})
+         {:type :text
+          :data #"(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}:\d{2}Z?"
+          :start (browse (format "https://calendar.google.com/calendar/r/week/%s/%s/%s" $1 $2 $3))})
    (rule "Search ISBN on Amazon"
-    {:type :text
-     :data #"([0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])'"
-     :start (browse (str "http://www.amazon.com/s/?field-keywords=" $1))})
+         {:type :text
+          :data #"([0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])'"
+          :start (browse (str "http://www.amazon.com/s/?field-keywords=" $1))})
    (rule "Browse URL"
     {:type :text
      :data url-regex
      :start (browse $0)})
    (rule "Browse local html"
-    {:type :text
-     :data #"(?U)(file://)?([a-zA-Z0-9_\-\: \/]+\.html?|htm)"
-     :arg (is-file $2)
-     :start (browse $arg)})
+         {:type :text
+          :data #"(?U)(file://)?([a-zA-Z0-9_\-\: \/]+\.html?|htm)"
+          :arg (is-file $2)
+          :start (browse $arg)})
    (rule "Open java file matching stacktrace line"
-    {:type :text
-     :data #"([a-zA-Z0-9]+\.)+[a-zA-Z0-9]+\([a-zA-Z0-9]+\.java\:[0-9]+\)"
-     :start (sh "open_by_stacktrace_line java" $0)})
+         {:type :text
+          :data #"([a-zA-Z0-9]+\.)+[a-zA-Z0-9]+\([a-zA-Z0-9]+\.java\:[0-9]+\)"
+          :start (sh "open_by_stacktrace_line java" $0)})
    (rule "Image viewer"
-    {:type :text
-     :data #"(?U)(file://)?(\p{Print}+\.(png|PNG|jpe?g|JPE?G|gif|GIF|tiff?|TIFF?))"
-     :arg (is-file $2)
-     :start (sh "feh" $arg)})
+         {:type :text
+          :data #"(?U)(file://)?(\p{Print}+\.(png|PNG|jpe?g|JPE?G|gif|GIF|tiff?|TIFF?))"
+          :arg (is-file $2)
+          :start (sh "feh" $arg)})
    (rule "Image viewer"
-    {:type :image
-     :start (let [extension (pantomime/extension-for-name $TYPE)
-                  tmp-file (java.io.File/createTempFile "cathica-image-" extension)]
-              (bytestreams/transfer $DATA tmp-file)
-              (sh "feh" (.getAbsolutePath tmp-file))
-              (.deleteOnExit tmp-file))})
+         {:type :image
+          :start (let [extension (pantomime/extension-for-name $TYPE)
+                       tmp-file (java.io.File/createTempFile "cathica-image-" extension)]
+                   (bytestreams/transfer $DATA tmp-file)
+                   (sh "feh" (.getAbsolutePath tmp-file))
+                   (.deleteOnExit tmp-file))})
    (rule "Document viewer"
-    {:type :text
-     :data #"(?U)(file://)?(\p{Print}+\.(pdf))"
-     :arg (is-file $2)
-     :start (sh "mupdf" $arg)})
+         {:type :text
+          :data #"(?U)(file://)?(\p{Print}+\.(pdf))"
+          :arg (is-file $2)
+          :start (sh "mupdf" $arg)})
    (rule "Video Player: Youtube Link"
-     {:type :text
-      :data #"(?:http(?:s?):\/\/)?(?:www\.)?youtu(?:be\.com\/watch\?v=|\.be\/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
-      :start (sh "mpv" $0)})
+         {:type :text
+          :data #"(?:http(?:s?):\/\/)?(?:www\.)?youtu(?:be\.com\/watch\?v=|\.be\/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
+          :start (sh "mpv" $0)})
    (rule "Video Player: Download in Background"
-     {:type :text
-      :data #"(?:http(?:s?):\/\/)?(?:www\.)?youtu(?:be\.com\/watch\?v=|\.be\/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
-      :start (future
-               (desktop-notification "Starting youtube download" $1)
-               (let [filename (youtube-dl-video
-                               $1)]
-                 (desktop-notification "Download finished" filename)))})
+         {:type :text
+          :data #"(?:http(?:s?):\/\/)?(?:www\.)?youtu(?:be\.com\/watch\?v=|\.be\/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
+          :start (future
+                   (desktop-notification "Starting youtube download" $1)
+                   (let [filename (youtube-dl-video
+                                   $1)]
+                     (desktop-notification "Download finished" filename)))})
    (rule "Gmail - msgid"
-    {:type :text
-     :data #"rfc822msgid:(.+)|msgid://(.+)"
-     :start (browse (format "https://mail.google.com/#search/rfc822msgid:%s" $1))})
+         {:type :text
+          :data #"rfc822msgid:(.+)|msgid://(.+)"
+          :start (browse (format "https://mail.google.com/#search/rfc822msgid:%s" $1))})
    (rule "Gmail - Write Email"
-    {:type :text
-     :data #"[a-zA-Z0-9\._%+\-]+@[a-zA-Z0-9\.\-]+\.[a-zA-Z]+"
-     :start (sh "gmail" $0)})
+         {:type :text
+          :data #"[a-zA-Z0-9\._%+\-]+@[a-zA-Z0-9\.\-]+\.[a-zA-Z]+"
+          :start (sh "gmail" $0)})
    (rule "Gmail - Write Email"
-    {:type :text
-     :data #".*[a-zA-Z0-9 \-_]+ \<([a-zA-Z0-9\._%+\-]+@[a-zA-Z0-9\.\-]+\.[a-zA-Z]+)\>.*"
-     :start (sh "gmail" $0)})
+         {:type :text
+          :data #".*[a-zA-Z0-9 \-_]+ \<([a-zA-Z0-9\._%+\-]+@[a-zA-Z0-9\.\-]+\.[a-zA-Z]+)\>.*"
+          :start (sh "gmail" $0)})
    (rule "Open Mangeled Log Filename in Emacs"
-    {:type :text
-     :data #"…([\w_\/]+\.\w+):(\d+)"
-     :src terminal-re
-     :arg (git-resolve-file $1)
-     :start (emacs-open $arg [(str "+" $2 ":" 0)])})
+         {:type :text
+          :data #"…([\w_\/]+\.\w+):(\d+)"
+          :src terminal-re
+          :arg (git-resolve-file $1)
+          :start (emacs-open $arg [(str "+" $2 ":" 0)])})
    (rule "Open Compile Error in Emacs"
-    {:type :text
-     :data #"^../([a-zA-Z0-9_\-\:\. \(\)\/]+):(\d+):(\d+):\s+(\w+):\s+(.+)"
-     :src terminal-re
-     :arg (is-file $1)
-     :start (do
-              (desktop-notification (str "Compiler " $4 " in " $1 " line " $2) $5 :expire-time 0)
-              (emacs-open $arg [(str "+" $2 ":" $3)]))})
+         {:type :text
+          :data #"^../([a-zA-Z0-9_\-\:\. \(\)\/]+):(\d+):(\d+):\s+(\w+):\s+(.+)"
+          :src terminal-re
+          :arg (is-file $1)
+          :start (do
+                   (desktop-notification (str "Compiler " $4 " in " $1 " line " $2) $5 :expire-time 0)
+                   (emacs-open $arg [(str "+" $2 ":" $3)]))})
    (rule "Show timestamp range"
-    {:type :text
-     :data #"(?s).+_timestamp_ms: (\d+)\n.+_timestamp_ms: (\d+)"
-     :start (let [start (tc/from-long (Long/parseLong $1))
-                  end (tc/from-long (Long/parseLong $2))
-                  start-local (time/to-time-zone start (time/default-time-zone))
-                  end-local (time/to-time-zone end (time/default-time-zone))]
-              (desktop-notification "ts range:"
-                                    (str
-                                     "UTC:      "
-                                     (tf/unparse (:mysql tf/formatters) start)
-                                     " - "
-                                     (tf/unparse (:mysql tf/formatters) end)
-                                     "\n"
-                                     "Local:    "
-                                     (tl/format-local-time start-local :mysql)
-                                     " - "
-                                     (tl/format-local-time end-local :mysql)
-                                     "\n"
-                                     "Duration: "
-                                     (format-interval (time/interval start end)))
-                                    :expire-time 0))})
+         {:type :text
+          :data #"(?s).+_timestamp_ms: (\d+)\n.+_timestamp_ms: (\d+)"
+          :start (let [start (tc/from-long (Long/parseLong $1))
+                       end (tc/from-long (Long/parseLong $2))
+                       start-local (time/to-time-zone start (time/default-time-zone))
+                       end-local (time/to-time-zone end (time/default-time-zone))]
+                   (desktop-notification "ts range:"
+                                         (str
+                                          "UTC:      "
+                                          (tf/unparse (:mysql tf/formatters) start)
+                                          " - "
+                                          (tf/unparse (:mysql tf/formatters) end)
+                                          "\n"
+                                          "Local:    "
+                                          (tl/format-local-time start-local :mysql)
+                                          " - "
+                                          (tl/format-local-time end-local :mysql)
+                                          "\n"
+                                          "Duration: "
+                                          (format-interval (time/interval start end)))
+                                         :expire-time 0))})
    (rule "Convert Qtimestamps"
     {:type :text
      :data #".*(timestamp|time)_(ms|s): (\d+)"
@@ -253,51 +253,51 @@
               (desktop-notification (str "ts: " $0) msg :expire-time 0)
               (set-clipboard-string selection msg))})
    (rule "Convert Duration (to clipboard)"
-    {:type :text
-     :data #"(\d+)(ms|ns|s)"
-     :start (let [unit-multiplier (case $2
-                                    "ms" 1
-                                    "ns" 1/1000
-                                    "s" 1000)
-                  millis (* (Long/parseLong $1)
-                            unit-multiplier)
-                  msg (human-duration-short
-                       (org.joda.time.Period. (long millis)))]
-              (set-clipboard-string selection msg)
-              (desktop-notification (str "duration: " $0) msg :expire-time 0))})
+         {:type :text
+          :data #"(\d+)(ms|ns|s)"
+          :start (let [unit-multiplier (case $2
+                                         "ms" 1
+                                         "ns" 1/1000
+                                         "s" 1000)
+                       millis (* (Long/parseLong $1)
+                                 unit-multiplier)
+                       msg (human-duration-short
+                            (org.joda.time.Period. (long millis)))]
+                   (set-clipboard-string selection msg)
+                   (desktop-notification (str "duration: " $0) msg :expire-time 0))})
    (rule "Convert US Mass Unit"
          {:type :text
           :data #"([\d/ ]+)(ounce|pound|teaspoon|tablespoon|cup|pint)s?"
           :start (let [gram-multiplier (case $2
-                                      "ounce" 28.349523125
-                                      "pound" 453.59237
-                                      "teaspoon" 4.93
-                                      "tablespoon" 14.79
-                                      "pint" 568.26
-                                      "cup" 284.13)
+                                         "ounce" 28.349523125
+                                         "pound" 453.59237
+                                         "teaspoon" 4.93
+                                         "tablespoon" 14.79
+                                         "pint" 568.26
+                                         "cup" 284.13)
                        grams (* (edn/read-string $1) gram-multiplier)
                        msg (format "%.2fg" grams)]
                    (set-clipboard-string selection msg)
                    (desktop-notification $0 msg :expire-time 0))})
    (rule "Browse svg" {:type :text
-     :data #"(file://)?([a-zA-Z0-9_\-\: \/]+\.svg|SVG)"
-     :arg (is-file $2)
-     :start (browse $arg)})
+                       :data #"(file://)?([a-zA-Z0-9_\-\: \/]+\.svg|SVG)"
+                       :arg (is-file $2)
+                       :start (browse $arg)})
    (rule "Emacs: dired"
-    {:type :text
-     :data #".*"
-     :arg (is-dir $0)
-     :start (emacs-open $arg)})
+         {:type :text
+          :data #".*"
+          :arg (is-dir $0)
+          :start (emacs-open $arg)})
    (rule "Emacs: edit"
-    {:type :text
-     :data #"(file://)?([a-zA-Z0-9_\-\:\. \(\)\/]+)"
-     :arg (is-file $2)
-     :start (emacs-open $arg)})
+         {:type :text
+          :data #"(file://)?([a-zA-Z0-9_\-\:\. \(\)\/]+)"
+          :arg (is-file $2)
+          :start (emacs-open $arg)})
    (rule "Emacs: Commit in Magit"
-    {:type :text
-     :data #"[0-9a-f]{5,}"
-     :start (sh "open_magit_commit" $0)
-     })])
+         {:type :text
+          :data #"[0-9a-f]{5,}"
+          :start (sh "open_magit_commit" $0)
+          })])
 
 
 (defn 🖖-bookmark [type url]
