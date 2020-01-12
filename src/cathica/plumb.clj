@@ -32,7 +32,12 @@
     ;;   (format "%s\n⇊\n\n%s"
     ;;     (with-out-str (pprint/pprint message))
     ;;     (with-out-str (pprint/pprint rule))))
-    (execute)))
+    (try
+      (execute)
+      (catch Throwable th
+        (log/error th "Rule failed"
+                   {:message message
+                    :rule rule})))))
 
 (defn plumb-first
   "Find first matching rule - execute that"
