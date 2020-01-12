@@ -28,6 +28,7 @@
                  [com.github.hypfvieh/libmatthew "0.8.3"]
                  [clj-http "3.10.0"]
                  [byte-streams "0.2.4"]
+                 [clojure-humanize "0.2.2"]
                  [robert/hooke "1.3.0"]
                  [cheshire "5.9.0"]
                  [seesaw "1.5.0"]

@@ -16,6 +16,7 @@
    [taoensso.timbre :as log]
    [slingshot.slingshot :refer [throw+ try+]]
    [mount.core :as mount :refer [defstate]]
+   [clojure.contrib.humanize :as human]
    [clojure.edn :as edn]))
 
 (def 🖖-bookmark-url "http://10.23.1.23:8023/reader/bookmark/add")
@@ -73,6 +74,23 @@
       (do
         (log/error "Youtube-dl error: " youtube-err)
         (desktop-notification "Youtube-dl error" youtube-err)))))
+
+(defn download-url [url dst-dir]
+  (let [resp (http/get url {:as :stream})
+        filename (-> url
+                     io/as-url
+                     .getPath
+                     io/as-file
+                     .getName)
+        out-file (io/file dst-dir filename)]
+    (desktop-notification
+     (format "Downloading %s" (human/filesize (:length resp)))
+     (format "%s\n➙\n%s" url out-file))
+    (io/copy
+     (:body resp)
+     out-file)
+    (desktop-notification "Download finished" out-file)
+    out-file))
 
 
 (def query-string-re #"(?U)([\w ]+)")
@@ -146,9 +164,13 @@
           :data #"([0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])'"
           :start (browse (str "http://www.amazon.com/s/?field-keywords=" $1))})
    (rule "Browse URL"
-    {:type :text
-     :data url-regex
-     :start (browse $0)})
+         {:type :text
+          :data url-regex
+          :start (browse $0)})
+   (rule "Download URL to Desktop"
+         {:type :text
+          :data url-regex
+          :start (download-url $0 (str (System/getProperty "user.home") "/Desktop"))})
    (rule "Browse local html"
          {:type :text
           :data #"(?U)(file://)?([a-zA-Z0-9_\-\: \/]+\.html?|htm)"
