@@ -1,22 +1,20 @@
 (ns cathica.rules
   (:require
-   [cathica.plumb :refer [rule desktop-notification]]
-   [cathica.logging :refer [with-logging-status]]
+   [cathica.regex :as regex]
+   [cathica.actions :as actions]
+   [cathica.rule :refer [rule]]
    [cathica.utils :refer [is-file is-dir git-resolve-file format-interval human-duration-short]]
    [clj-time.coerce :as tc]
    [clj-time.core :as time]
    [clj-time.format :as tf]
    [clj-time.local :as tl]
-   [clojure.java.io :as io]
    [clojure.java.shell :refer [sh]]
    [clj-http.client :as http]
    [clojure.string :as string]
    [byte-streams :as bytestreams]
    [pantomime.mime :as pantomime]
    [taoensso.timbre :as log]
-   [slingshot.slingshot :refer [throw+ try+]]
    [mount.core :as mount :refer [defstate]]
-   [clojure.contrib.humanize :as human]
    [clojure.edn :as edn]))
 
 (def 🖖-bookmark-url "http://10.23.1.23:8023/reader/bookmark/add")
@@ -27,73 +25,9 @@
 (def bugtracker-base-url "https://mantis/view.php?id=")
 (def gerrit-change-base-url "https://gerrit/#/q/")
 
-(def url-regex #"(?U)(https?|ftp)://[a-zA-Z0-9_@\-]+([.:][a-zA-Z0-9_@\-]+)*/?[a-zA-Z0-9_?,%#~&/\-+=]+([:.][a-zA-Z0-9_?,%#~&/\-+=]+)*")
-
 (defonce selection (.getSystemSelection (java.awt.Toolkit/getDefaultToolkit)))
 
-(defn set-clipboard-string [cb s]
-  (.setContents
-    cb
-    (reify java.awt.datatransfer.Transferable
-      (^Object getTransferData [this ^java.awt.datatransfer.DataFlavor flavor]
-       s)
-      (getTransferDataFlavors [this]
-        (into-array java.awt.datatransfer.DataFlavor [(java.awt.datatransfer.DataFlavor/stringFlavor)]))
-      (^boolean isDataFlavorSupported [this ^java.awt.datatransfer.DataFlavor flavor]
-       (= flavor (java.awt.datatransfer.DataFlavor/stringFlavor))))
-    nil))
-
-(defn browse [url]
-  (sh "firefox" url))
-
-(defn emacs-open
-  ([file extra-args]
-   (apply sh (concat
-        ["emacsclient" "--no-wait"]
-        extra-args
-        [file])))
-  ([file]
-   (sh "emacsclient" "--no-wait" file)))
-
-(defn youtube-dl-video [url]
-  (let [{:keys [exit out err]}
-        (sh
-         "youtube-dl"
-         "--format" "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
-         "--recode-video" "mp4"
-         "--embed-subs"
-         url
-         :dir
-         (str (System/getProperty "user.home") "/Desktop"))
-        youtube-err (second (re-find #"YouTube said:\s+(.+)$" err))]
-    (log/info "Youtube-dl OUT: " out)
-    (log/debug "Youtube-dl ERR: " err)
-    (if (zero? exit)
-      (let [[_ out-filename] (re-find #"Destination:\s(.+\.mp4)" out)]
-        out-filename)
-      (do
-        (log/error "Youtube-dl error: " youtube-err)
-        (desktop-notification "Youtube-dl error" youtube-err)))))
-
-(defn download-url [url dst-dir]
-  (let [resp (http/get url {:as :stream})
-        filename (-> url
-                     io/as-url
-                     .getPath
-                     io/as-file
-                     .getName)
-        out-file (io/file dst-dir filename)]
-    (desktop-notification
-     (format "Downloading %s" (human/filesize (:length resp)))
-     (format "%s\n➙\n%s" url out-file))
-    (io/copy
-     (:body resp)
-     out-file)
-    (desktop-notification "Download finished" out-file)
-    out-file))
-
-
-(def query-string-re #"(?U)([\w ]+)")
+(def query-string-re #"(?U)([\w\"':-\\+/ ]+)")
 
 (def web-search-engines
   [["Amazon" #(str "http://www.amazon.de/exec/obidos/external-search?keyword=" %)]
@@ -110,41 +44,39 @@
 (def +web-search-rules+
   (for [[query-engine-name url-fn] web-search-engines]
     (rule (str "Search " query-engine-name)
-     {:type :text
-      :data query-string-re
-      :start (browse (url-fn(java.net.URLEncoder/encode $1 "UTF-8")))})))
-
+          {:type :text
+           :data query-string-re
+           :start (actions/browse (url-fn (java.net.URLEncoder/encode $1 "UTF-8")))})))
 
 (def logistics-tracing
-  [["DHL" #"([0-9]{10,11})" #(str "https://www.dhl.de/en/privatkunden/"
-                                  "pakete-empfangen/verfolgen.html?piececode=" %)]
+  [["DHL" #"([0-9]{10,})" #(str "https://www.dhl.de/en/privatkunden/"
+                                "pakete-empfangen/verfolgen.html?piececode=" %)]
    ["17track" #"(\w+)" #(str "https://t.17track.net/de#nums=" %)]])
 
 (def +logistics-tracing+
   (for [[query-engine-name regex url-fn] logistics-tracing]
     (rule (str "Track and Trace: " query-engine-name)
-     {:type :text
-      :data regex
-      :start (browse (url-fn(java.net.URLEncoder/encode $1 "UTF-8")))})))
-
+          {:type :text
+           :data regex
+           :start (actions/browse (url-fn (java.net.URLEncoder/encode $1 "UTF-8")))})))
 
 (def +specialized-search-rules+
   [(rule "Manits Issue"
          {:type :text
           :data #"#([0-9]+)"
-          :start (browse (str bugtracker-base-url $1))})
+          :start (actions/browse (str bugtracker-base-url $1))})
    (rule "Gerrit Change"
          {:type :text
           :data #"Change-Id: ([a-zA-Z0-9]+)"
-          :start (browse (str gerrit-change-base-url $1))})
+          :start (actions/browse (str gerrit-change-base-url $1))})
    (rule "c++: search cppreference for std::"
          {:type :text
           :data #"std::[a-zA-Z]+"
-          :start (browse (str "http://en.cppreference.com/mwiki/index.php?title=Special%3ASearch&search=" $0))})
+          :start (actions/browse (str "http://en.cppreference.com/mwiki/index.php?title=Special%3ASearch&search=" $0))})
    (rule "Browse RFC"
          {:type :text
           :data #"(RFC|rfc)[ ]*([0-9]+)"
-          :start (browse (str "https://www.rfc-editor.org/rfc/rfc" $2 ".txt"))})
+          :start (actions/browse (str "https://www.rfc-editor.org/rfc/rfc" $2 ".txt"))})
    (rule "Search Web"
          {:type :text
           :data #"(?U).+"
@@ -158,24 +90,24 @@
   [(rule "Google Calendar"
          {:type :text
           :data #"(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}:\d{2}Z?"
-          :start (browse (format "https://calendar.google.com/calendar/r/week/%s/%s/%s" $1 $2 $3))})
+          :start (actions/browse (format "https://calendar.google.com/calendar/r/week/%s/%s/%s" $1 $2 $3))})
    (rule "Search ISBN on Amazon"
          {:type :text
           :data #"([0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])'"
-          :start (browse (str "http://www.amazon.com/s/?field-keywords=" $1))})
+          :start (actions/browse (str "http://www.amazon.com/s/?field-keywords=" $1))})
    (rule "Browse URL"
          {:type :text
-          :data url-regex
-          :start (browse $0)})
+          :data regex/url
+          :start (actions/browse $0)})
    (rule "Download URL to Desktop"
          {:type :text
-          :data url-regex
-          :start (download-url $0 (str (System/getProperty "user.home") "/Desktop"))})
+          :data regex/url
+          :start (actions/download-url $0 (str (System/getProperty "user.home") "/Desktop"))})
    (rule "Browse local html"
          {:type :text
           :data #"(?U)(file://)?([a-zA-Z0-9_\-\: \/]+\.html?|htm)"
           :arg (is-file $2)
-          :start (browse $arg)})
+          :start (actions/browse $arg)})
    (rule "Open java file matching stacktrace line"
          {:type :text
           :data #"([a-zA-Z0-9]+\.)+[a-zA-Z0-9]+\([a-zA-Z0-9]+\.java\:[0-9]+\)"
@@ -205,14 +137,14 @@
          {:type :text
           :data #"(?:http(?:s?):\/\/)?(?:www\.)?youtu(?:be\.com\/watch\?v=|\.be\/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
           :start (future
-                   (desktop-notification "Starting youtube download" $1)
-                   (let [filename (youtube-dl-video
+                   (actions/desktop-notification "Starting youtube download" $1)
+                   (let [filename (actions/youtube-dl-video
                                    $1)]
-                     (desktop-notification "Download finished" filename)))})
+                     (actions/desktop-notification "Download finished" filename)))})
    (rule "Gmail - msgid"
          {:type :text
           :data #"rfc822msgid:(.+)|msgid://(.+)"
-          :start (browse (format "https://mail.google.com/#search/rfc822msgid:%s" $1))})
+          :start (actions/browse (format "https://mail.google.com/#search/rfc822msgid:%s" $1))})
    (rule "Gmail - Write Email"
          {:type :text
           :data #"[a-zA-Z0-9\._%+\-]+@[a-zA-Z0-9\.\-]+\.[a-zA-Z]+"
@@ -224,17 +156,17 @@
    (rule "Open Mangeled Log Filename in Emacs"
          {:type :text
           :data #"…([\w_\/]+\.\w+):(\d+)"
-          :src terminal-re
+          :src regex/terminal
           :arg (git-resolve-file $1)
-          :start (emacs-open $arg [(str "+" $2 ":" 0)])})
+          :start (actions/emacs-open $arg [(str "+" $2 ":" 0)])})
    (rule "Open Compile Error in Emacs"
          {:type :text
           :data #"^../([a-zA-Z0-9_\-\:\. \(\)\/]+):(\d+):(\d+):\s+(\w+):\s+(.+)"
-          :src terminal-re
+          :src regex/terminal
           :arg (is-file $1)
           :start (do
-                   (desktop-notification (str "Compiler " $4 " in " $1 " line " $2) $5 :expire-time 0)
-                   (emacs-open $arg [(str "+" $2 ":" $3)]))})
+                   (actions/desktop-notification (str "Compiler " $4 " in " $1 " line " $2) $5 :expire-time 0)
+                   (actions/emacs-open $arg [(str "+" $2 ":" $3)]))})
    (rule "Show timestamp range"
          {:type :text
           :data #"(?s).+_timestamp_ms: (\d+)\n.+_timestamp_ms: (\d+)"
@@ -242,21 +174,21 @@
                        end (tc/from-long (Long/parseLong $2))
                        start-local (time/to-time-zone start (time/default-time-zone))
                        end-local (time/to-time-zone end (time/default-time-zone))]
-                   (desktop-notification "ts range:"
-                                         (str
-                                          "UTC:      "
-                                          (tf/unparse (:mysql tf/formatters) start)
-                                          " - "
-                                          (tf/unparse (:mysql tf/formatters) end)
-                                          "\n"
-                                          "Local:    "
-                                          (tl/format-local-time start-local :mysql)
-                                          " - "
-                                          (tl/format-local-time end-local :mysql)
-                                          "\n"
-                                          "Duration: "
-                                          (format-interval (time/interval start end)))
-                                         :expire-time 0))})
+                   (actions/desktop-notification "ts range:"
+                                                 (str
+                                                  "UTC:      "
+                                                  (tf/unparse (:mysql tf/formatters) start)
+                                                  " - "
+                                                  (tf/unparse (:mysql tf/formatters) end)
+                                                  "\n"
+                                                  "Local:    "
+                                                  (tl/format-local-time start-local :mysql)
+                                                  " - "
+                                                  (tl/format-local-time end-local :mysql)
+                                                  "\n"
+                                                  "Duration: "
+                                                  (format-interval (time/interval start end)))
+                                                 :expire-time 0))})
    (rule "Convert Qtimestamps"
     {:type :text
      :data #".*(timestamp|time)_(ms|s): (\d+)"
@@ -272,8 +204,8 @@
                                                 ts
                                                 (time/time-zone-for-id %)) :mysql))
                                         show-ts))]
-              (desktop-notification (str "ts: " $0) msg :expire-time 0)
-              (set-clipboard-string selection msg))})
+              (actions/desktop-notification (str "ts: " $0) msg :expire-time 0)
+              (actions/set-clipboard-string selection msg))})
    (rule "Convert Duration (to clipboard)"
          {:type :text
           :data #"(\d+)(ms|ns|s)"
@@ -285,8 +217,8 @@
                                  unit-multiplier)
                        msg (human-duration-short
                             (org.joda.time.Period. (long millis)))]
-                   (set-clipboard-string selection msg)
-                   (desktop-notification (str "duration: " $0) msg :expire-time 0))})
+                   (actions/set-clipboard-string selection msg)
+                   (actions/desktop-notification (str "duration: " $0) msg :expire-time 0))})
    (rule "Convert US Mass Unit"
          {:type :text
           :data #"([\d/ ]+)(ounce|pound|teaspoon|tablespoon|cup|pint)s?"
@@ -299,8 +231,8 @@
                                          "cup" 284.13)
                        grams (* (edn/read-string $1) gram-multiplier)
                        msg (format "%.2fg" grams)]
-                   (set-clipboard-string selection msg)
-                   (desktop-notification $0 msg :expire-time 0))})
+                   (actions/set-clipboard-string selection msg)
+                   (actions/desktop-notification $0 msg :expire-time 0))})
    (rule "Convert Temperature Units (℃, ℉)"
          {:type :text
           :data #"([\d,\.]+)\s*(degree|°|℃|℉|celsius|farenheit)"
@@ -308,28 +240,26 @@
                        c-to-f (float (+ (* value 9/5) 32))
                        f-to-c (float (* (- value 32) 5/9))
                        msg (format "℃ ➙ ℉ %.2f\n℉ ➙ ℃ %.2f" c-to-f f-to-c)]
-                   (desktop-notification $0 msg :expire-time 0))})
+                   (actions/desktop-notification $0 msg :expire-time 0))})
 
    (rule "Browse svg" {:type :text
                        :data #"(file://)?([a-zA-Z0-9_\-\: \/]+\.svg|SVG)"
                        :arg (is-file $2)
-                       :start (browse $arg)})
+                       :start (actions/browse $arg)})
    (rule "Emacs: dired"
          {:type :text
           :data #".*"
           :arg (is-dir $0)
-          :start (emacs-open $arg)})
+          :start (actions/emacs-open $arg)})
    (rule "Emacs: edit"
          {:type :text
           :data #"(file://)?([a-zA-Z0-9_\-\:\. \(\)\/]+)"
           :arg (is-file $2)
-          :start (emacs-open $arg)})
+          :start (actions/emacs-open $arg)})
    (rule "Emacs: Commit in Magit"
          {:type :text
           :data #"[0-9a-f]{5,}"
-          :start (sh "open_magit_commit" $0)
-          })])
-
+          :start (sh "open_magit_commit" $0)})])
 
 (defn 🖖-bookmark [type url]
   (future
@@ -340,28 +270,26 @@
           item-id (:body resp)
           🖖-url (str 🖖-bookmark-item-base-url item-id)]
 
-      (desktop-notification "bookmark Ready"
-                            🖖-url)
-      (browse 🖖-url))))
+      (actions/desktop-notification "bookmark Ready"
+                                    🖖-url)
+      (actions/browse 🖖-url))))
 
 (def +🖖-rules+
   [(rule
     "🖖 Add Raw Bookmark"
     {:type :text
-     :data url-regex
+     :data regex/url
      :start (🖖-bookmark :raw-bookmark $0)})
    (rule
     "🖖 Add Readability Bookmark"
     {:type :text
-     :data url-regex
-     :start (🖖-bookmark :readability-bookmark $0)})
-   ])
+     :data regex/url
+     :start (🖖-bookmark :readability-bookmark $0)})])
 
-
-(def +default-rules+
-  (concat
-   +rules+
-   +specialized-search-rules+
-   +web-search-rules+
-   +🖖-rules+
-   +logistics-tracing+))
+(defstate plumbing-rules
+  :start (concat
+          +rules+
+          +specialized-search-rules+
+          +web-search-rules+
+          +🖖-rules+
+          +logistics-tracing+))

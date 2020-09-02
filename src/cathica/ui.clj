@@ -1,44 +1,14 @@
 (ns cathica.ui
   (:require
    [seesaw.core :refer :all]
-   [seesaw.mig :refer [mig-panel]]
-   [seesaw.font :refer [font]]
    [seesaw.keymap :refer [map-key]]
    [taoensso.timbre :as log]
    [byte-streams :as bs]
    [clojure.pprint :refer [pprint]]))
 
-
 (defn mouse-location []
   (-> (java.awt.MouseInfo/getPointerInfo)
-                .getLocation))
-
-(defn -init []
-  ;; on linux this enables gtk -> hidpi
-  (System/setProperty "awt.useSystemAAFontSettings" "on")
-  (System/setProperty "swing.aatext" "true")
-  (javax.swing.UIManager/setLookAndFeel
-   (javax.swing.UIManager/getSystemLookAndFeelClassName))
-  (native!))
-
-(-init)
-
-(reify javax.swing.ListCellRenderer
-  (^java.awt.Component getListCellRendererComponent
-   [^javax.swing.ListCellRenderer this
-    ^javax.swing.JList lst
-    ^Object value
-    ^int index
-    ^boolean isSelected
-    ^boolean cellHasFocus]
-   (.setText this (str value))))
-
-
-               ;; (^void clipboard [^DBusInterface this]
-               ;;  (core/plumb-current-clipboard))
-               ;; (^void string [^DBusInterface this ^String s]
-               ;;  (core/plumb-string s))))
-
+      .getLocation))
 
 (defn- make-cell-renderer []
   (reify javax.swing.ListCellRenderer
@@ -75,24 +45,21 @@
               :center (vertical-panel
                        :preferred-size [600 :by 800]
                        :items [(scrollable (text :text (with-out-str (pprint message))
-                                     :id :message
-                                     :multi-line? true))
+                                                 :id :message
+                                                 :multi-line? true))
                                (grid-panel
 
-                                :items [
-                                (label :id :image
-                                      :icon
-                                      (when-let [image-data (get-in message [:data "image/png"])]
-                                        (javax.swing.ImageIcon.
-                                         (bs/to-byte-array image-data))
-                                        (.reset image-data)
-                                        ))])
+                                :items [(label :id :image
+                                               :icon
+                                               (when-let [image-data (get-in message [:data "image/png"])]
+                                                 (javax.swing.ImageIcon.
+                                                  (bs/to-byte-array image-data))
+                                                 (.reset image-data)))])
                                (text :text ""
                                      :id :rule-preview
                                      :multi-line? true)])))
     (.setAlwaysOnTop true)
     (.setLocation (mouse-location))))
-
 
 (defn- add-behavior [frame promise]
   (let [{:keys [choices picker rule-preview]} (group-by-id frame)
@@ -114,9 +81,8 @@
                                (show-rule)))
     (doseq [k ["Q" "ESCAPE"]]
       (map-key picker k (fn [_] (deliver promise nil)
-                            (dispose! picker))))
+                          (dispose! picker))))
     frame))
-
 
 (defn picker [choices message]
   (let [p (promise)]
@@ -129,4 +95,9 @@
       (catch Exception e
         (log/warn e "Picker failed" choices message)
         (deliver p nil)))
-      @p))
+    @p))
+
+(defn setup []
+  (javax.swing.UIManager/setLookAndFeel
+   "com.sun.java.swing.plaf.gtk.GTKLookAndFeel")
+  (native!))
