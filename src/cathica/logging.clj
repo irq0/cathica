@@ -18,15 +18,16 @@
                             :max-size (* 42 1024 1024)})}})
 
   (log/merge-config!
-   {:ns-blacklist  ["org.apache.http.*"
-                    "org.eclipse.jetty.io.*"
-                    "org.eclipse.jetty.http.*"
-                    "org.eclipse.jetty.server.*"
-                    "org.eclipse.jetty.util.*"
-                    "org.apache.pdfbox.io.*"
-                    "com.ning.http.client.providers.netty.handler.*"
-                    "com.ning.http.client.providers.netty.channel.*"
-                    "org.freedesktop.dbus.*"]
+   {:ns-filter {:allow #{"*"}
+                :deny #{"org.apache.http.*"
+                        "org.eclipse.jetty.io.*"
+                        "org.eclipse.jetty.http.*"
+                        "org.eclipse.jetty.server.*"
+                        "org.eclipse.jetty.util.*"
+                        "org.apache.pdfbox.io.*"
+                        "org.freedesktop.dbus.*"
+                        "com.ning.http.client.providers.netty.handler.*"
+                        "com.ning.http.client.providers.netty.channel.*"}}
     :level :debug})
 
   (log/merge-config!
