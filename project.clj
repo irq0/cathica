@@ -5,7 +5,8 @@
   :jvm-opts ["-Xmx128m"
              "-Dawt.useSystemAAFontSettings=on"
              "-Dswing.aatext=true"
-             "-Dsun.java2d.dpiaware=true"
+             "-Dsun.java2d.uiScale.enabled=true"
+             "-Dsun.java2d.uiScale=200%"
              "-Dswing.defaultlaf=com.sun.java.swing.plaf.gtk.GTKLookAndFeel"
              "-Dswing.crossplatformlaf=com.sun.java.swing.plaf.gtk.GTKLookAndFeel"
              "-XX:-OmitStackTraceInFastThrow"]
