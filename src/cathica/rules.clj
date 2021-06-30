@@ -82,7 +82,7 @@
    (rule "Search Web"
          {:type :text
           :data #"(?U).+"
-          :start (sh "search_web" (string/trim $0))})
+          :start (actions/browse ((second (first web-search-engines)) (java.net.URLEncoder/encode (string/trim $0) "UTF-8")))})
    (rule "Search Dictionary"
          {:type :text
           :data #"(?U).+"
