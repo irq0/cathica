@@ -15,7 +15,7 @@
 
   :plugins [[lein-cljfmt "0.6.8"]]
   :exclusions [org.slf4j/slf4j-nop]
-  :dependencies [[org.clojure/clojure "1.10.1"]
+  :dependencies [[org.clojure/clojure "1.10.3"]
                  [com.taoensso/timbre "5.1.2"]
                  [org.slf4j/log4j-over-slf4j "1.7.30"]
                  [org.slf4j/jul-to-slf4j "1.7.30"]
@@ -24,8 +24,8 @@
                  [mount "0.1.16"]
                  [clj-time "0.15.2"]
                  [nrepl "0.8.3"]
-                 [cider/cider-nrepl "0.25.9"]
-                 [org.clojure/core.async "1.3.610"]
+                 [cider/cider-nrepl "0.26.0"]
+                 [org.clojure/core.async "1.3.618"]
                  [slingshot "0.12.2"]
                  [com.novemberain/pantomime "2.11.0"]
                  ;; for dbus-java
