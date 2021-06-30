@@ -97,6 +97,10 @@
         (deliver p nil)))
     @p))
 
+(defn text-dialog [text]
+  (-> (dialog :content (scrollable (editor-pane :text text)))
+      pack! show!))
+
 (defn setup []
   (javax.swing.UIManager/setLookAndFeel
    "com.sun.java.swing.plaf.gtk.GTKLookAndFeel")

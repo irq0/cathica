@@ -1,5 +1,6 @@
 (ns cathica.actions
   (:require
+   [cathica.ui :as ui]
    [taoensso.timbre :as log]
    [clj-http.client :as http]
    [clojure.java.io :as io]
@@ -78,3 +79,6 @@
      out-file)
     (desktop-notification "Download finished" out-file)
     out-file))
+
+(defn query-dict-and-show [phrase]
+  (ui/text-dialog (:out (sh "dict" "phrase"))))

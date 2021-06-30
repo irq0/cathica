@@ -84,7 +84,7 @@
    (rule "Search Dictionary"
          {:type :text
           :data #"(?U).+"
-          :start (sh "search_dict" (string/trim $0))})])
+          :start (actions/query-dict-and-show (string/trim $0))})])
 
 (def +rules+
   [(rule "Google Calendar"
