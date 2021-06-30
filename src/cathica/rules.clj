@@ -79,6 +79,10 @@
          {:type :text
           :data #"(RFC|rfc)[ ]*([0-9]+)"
           :start (actions/browse (str "https://www.rfc-editor.org/rfc/rfc" $2 ".txt"))})
+   (rule "Search dictionary (single word precedence)"
+         {:type :text
+          :data #"(?U)^\s*\b(\w+)\b\s*$"
+          :start (actions/query-dict-and-show (string/trim $1))})
    (rule "Search Web"
          {:type :text
           :data #"(?U).+"
