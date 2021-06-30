@@ -32,7 +32,7 @@
                           body])))
 
 (defn browse [url]
-  (sh "firefox" url))
+  (sh "xdg-open" url))
 
 (defn emacs-open
   ([file extra-args]
