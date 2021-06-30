@@ -1,0 +1,14 @@
+#+title: Cathica
+
+#+begin_quote
+The Doctor: Rose is asking the right sort of questions: Why is it so hot?
+Cathica: One minute you’re worried about the Empire and the next minute it’s the central heating.
+The Doctor: Oh, never underestimate plumbing. Plumbing’s very important.
+
+-- Dr Who 2005 S01E07 - The Long Game
+#+end_quote
+
+
+* What is this?
+My reinterpretation of the [[https://en.wikipedia.org/wiki/Plumber_(program)][Plan 9 Plummer]] using dbus and Clojure. It
+even has a picker implemented in Seesaw/Swing :).
