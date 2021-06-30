@@ -43,6 +43,10 @@
   ([file]
    (sh "emacsclient" "--no-wait" file)))
 
+(defn emacs-eval
+  [code]
+  (sh "emacsclient" "--no-wait" "--eval" code))
+
 (defn youtube-dl-video [url]
   (let [{:keys [exit out err]}
         (sh
