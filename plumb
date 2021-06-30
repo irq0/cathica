@@ -1,0 +1,29 @@
+#!/bin/bash
+
+cathica_call () {
+    local func="$1"
+
+    if [[ -n "$2" ]]; then
+	local arg="string:\"$2\""
+    fi
+
+    dbus-send --dest="org.irq0.cathica" \
+	      --print-reply \
+	      --session '/org/irq0/cathica/Plumb' \
+	      "$func" $arg
+}
+
+case "$1" in
+    default)
+	cathica_call org.irq0.cathica.Plumb.clipboard_default_action
+	;;
+    string)
+	cathica_call org.irq0.cathica.Plumb.string "$2"
+	;;
+    string+default)
+	cathica_call org.irq0.cathica.Plumb.string_default_action "$2"
+	;;
+    *)
+	cathica_call org.irq0.cathica.Plumb.clipboard
+	;;
+esac
