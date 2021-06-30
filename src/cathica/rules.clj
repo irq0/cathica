@@ -27,11 +27,13 @@
 
 (defonce selection (.getSystemSelection (java.awt.Toolkit/getDefaultToolkit)))
 
-(def query-string-re #"(?U)([\w\"':-\\+/ ]+)")
+(def query-string-re #"(?U).+")
 
 (def web-search-engines
-  [["Amazon" #(str "http://www.amazon.de/exec/obidos/external-search?keyword=" %)]
-   ["Google" #(str "https://www.google.com/complete/search?client=firefox&q=" %)]
+  [["Default" #(str "https://startpage.com/do/search?q=" %)]
+   ["Amazon" #(str "http://www.amazon.de/exec/obidos/external-search?keyword=" %)]
+   ["Google" #(str "https://www.google.com/search?q=" %)]
+   ["Google Scholar" #(str "https://scholar.google.com/scholar?q=" %)]
    ["Reddit" #(str "https://www.reddit.com/search?q=" %)]
    ["GitHub" #(str "https://github.com/search?ref=opensearch&q=" %)]
    ["Google Maps" #(str "https://www.google.com/maps/search/" % "?hl=en&source=opensearch")]
@@ -46,7 +48,7 @@
     (rule (str "Search " query-engine-name)
           {:type :text
            :data query-string-re
-           :start (actions/browse (url-fn (java.net.URLEncoder/encode $1 "UTF-8")))})))
+           :start (actions/browse (url-fn (java.net.URLEncoder/encode (string/trim $0) "UTF-8")))})))
 
 (def logistics-tracing
   [["DHL" #"([0-9]{10,})" #(str "https://www.dhl.de/en/privatkunden/"
@@ -129,15 +131,15 @@
           :data #"(?U)(file://)?(\p{Print}+\.(pdf))"
           :arg (is-file $2)
           :start (sh "mupdf" $arg)})
-   (rule "Video Player: Youtube Link"
+   (rule "Youtube-dl: Play in mediaplayer"
          {:type :text
-          :data #"(?:http(?:s?):\/\/)?(?:www\.)?youtu(?:be\.com\/watch\?v=|\.be\/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
+          :data regex/url
           :start (sh "mpv" $0)})
-   (rule "Video Player: Download in Background"
+   (rule "Youtube-dl: Download in Background"
          {:type :text
-          :data #"(?:http(?:s?):\/\/)?(?:www\.)?youtu(?:be\.com\/watch\?v=|\.be\/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
+          :data regex/url
           :start (future
-                   (actions/desktop-notification "Starting youtube download" $1)
+                   (actions/desktop-notification "Starting youtube download" $0)
                    (let [filename (actions/youtube-dl-video
                                    $1)]
                      (actions/desktop-notification "Download finished" filename)))})
@@ -265,13 +267,16 @@
   (future
     (let [resp (http/post 🖖-bookmark-url
                           {:content-type :json
+                           :accept :json
+                           :as :json
                            :form-params {:url url
                                          :type type}})
-          item-id (:body resp)
-          🖖-url (str 🖖-bookmark-item-base-url item-id)]
+          item (get-in resp [:body :item])
+          🖖-url (str 🖖-bookmark-item-base-url (:id item))]
+      (log/info resp item)
 
-      (actions/desktop-notification "bookmark Ready"
-                                    🖖-url)
+      (actions/desktop-notification "Bookmark Ready:"
+                                    (str (:title item) "\n" 🖖-url))
       (actions/browse 🖖-url))))
 
 (def +🖖-rules+
@@ -286,10 +291,25 @@
      :data regex/url
      :start (🖖-bookmark :readability-bookmark $0)})])
 
+(def +general-rules+
+  [(rule "ORG: Store Link"
+         {:type :text
+          :data regex/url
+          :start (actions/emacs-open
+                  (str "org-protocol://store-link?url="
+                       (java.net.URLEncoder/encode (string/trim $0) "UTF-8")))})
+   (rule "ORG: Capture"
+         {:type :text
+          :data #"(?U).+"
+          :start (actions/emacs-open
+                  (str "org-protocol://capture?template=c&url="
+                       (java.net.URLEncoder/encode (string/trim $0) "UTF-8")))})])
+
 (defstate plumbing-rules
   :start (concat
           +rules+
           +specialized-search-rules+
           +web-search-rules+
           +🖖-rules+
-          +logistics-tracing+))
+          +logistics-tracing+
+          +general-rules+))
