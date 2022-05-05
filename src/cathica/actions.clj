@@ -85,4 +85,4 @@
     out-file))
 
 (defn query-dict-and-show [phrase]
-  (ui/text-dialog (:out (sh "dict" "phrase"))))
+  (ui/text-dialog (:out (sh "dict" phrase))))
