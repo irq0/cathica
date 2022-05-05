@@ -167,7 +167,7 @@
           :start (actions/emacs-open $arg [(str "+" $2 ":" 0)])})
    (rule "Open Compile Error in Emacs"
          {:type :text
-          :data #"^../([a-zA-Z0-9_\-\:\. \(\)\/]+):(\d+):(\d+):\s+(\w+):\s+(.+)"
+          :data #"([a-zA-Z0-9_\-\. \(\)\/]+):(\d+):(\d+):\s+(.+)$"
           :src regex/terminal
           :arg (is-file $1)
           :start (do
