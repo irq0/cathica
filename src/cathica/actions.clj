@@ -50,13 +50,13 @@
 (defn youtube-dl-video [url]
   (let [{:keys [exit out err]}
         (sh
-         "youtube-dl"
+         "yt-dlp"
          "--format" "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
          "--recode-video" "mp4"
          "--embed-subs"
          url
          :dir
-         (str (System/getProperty "user.home") "/Desktop/MEDIA"))
+         (str (System/getProperty "user.home") "/MEDIA"))
         youtube-err (second (re-find #"YouTube said:\s+(.+)$" err))]
     (log/info "Youtube-dl OUT: " out)
     (log/debug "Youtube-dl ERR: " err)
