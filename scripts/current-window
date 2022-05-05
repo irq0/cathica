@@ -1,0 +1,71 @@
+#!/bin/bash
+
+child_comm ()
+{
+    local shell_pid="$1"
+    local shell_child
+    shell_child="$(tr -d '[:space:]\n' < "/proc/${shell_pid}/task/${shell_pid}/children")"
+
+    if [[ -z $shell_child ]]; then
+        return 1
+    else
+        cat "/proc/${shell_child}/comm"
+    fi
+}
+
+if [[ -z $DISPLAY ]]; then
+    export DISPLAY=":0"
+fi
+
+current_window="$(xprop -root \
+         | awk '/^_NET_ACTIVE_WINDOW/ { print $5 }')"
+window_pid="$(xprop -id "${current_window}" \
+         | awk 'BEGIN { FS="=" } /^_NET_WM_PID\(CARDINAL\)/ { print $2 }' | tr -d '[:space:]')"
+window_class="$(xprop -id "${current_window}" \
+         | awk 'BEGIN { FS="[=,]" } /^WM_CLASS\(STRING\)/ { print $2 }' | tr -d '[:space:]\"')"
+
+case "${window_class}" in
+    *rxvt*|Alacritty|main|konsole)
+	shell_pid="$(tr -d '[:space:]\n' < "/proc/${window_pid}/task/${window_pid}/children")"
+	child_comm="$(child_comm "${shell_pid}")"
+
+	case "$child_comm" in
+            screen)
+		>&2 echo "$0: Screen session detected. No CWD detection :("
+		;;
+            tmux*)
+		>&2 echo "$0: Tmux session detected. Using CWD of active window's process"
+
+		tmux_client_pid="${shell_pid}"
+		tmux_client_pts="$(readlink "/proc/${tmux_client_pid}/fd/0")"
+		tmux_session_id="$(tmux list-clients -F '#{client_tty} #{session_id}' \
+                  | grep "${tmux_client_pts}" | cut -f 2 -d ' ')"
+
+		tmux_pane_pid="$(tmux list-windows -a -F '#{session_id} #{window_active} #{pane_pid}' \
+                  | awk -vsession_id="${tmux_session_id}" '($1 == session_id && $2 == 1) { print $3 }')"
+
+		shell_pid="${tmux_pane_pid}"
+		;;
+	esac
+
+	working_dir="$(readlink -f "/proc/${shell_pid}/cwd")"
+	;;
+
+    *emacs*)
+	current_window_dec="$(printf '%d' "${current_window}")"
+	working_dir="$(timeout 1s emacsclient \
+                          --eval "
+(first
+(let* ((frame (-first (lambda (frame)
+                        (string= (frame-parameter frame 'outer-window-id) \"${current_window_dec}\"))
+                     (frame-list))))
+      (-non-nil (-map (lambda (buffer)
+          (unless (string= (buffer-name buffer) \"*scratch*\")
+            (with-current-buffer buffer
+              default-directory)))
+        (frame-parameter frame 'buffer-list))))))" | tr -d \")"
+	;;
+esac
+
+working_dir=${working_dir/#\~/$HOME}
+echo "{:window-class \"${window_class}\" :wdir \"${working_dir}\"}"
