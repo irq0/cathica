@@ -302,11 +302,17 @@
           :start (actions/emacs-open
                   (str "org-protocol://store-link?url="
                        (java.net.URLEncoder/encode (string/trim $0) "UTF-8")))})
-   (rule "ORG: Capture"
+   (rule "ORG: Capture URL"
          {:type :text
           :data #"(?U).+"
           :start (actions/emacs-open
                   (str "org-protocol://capture?template=c&url="
+                       (java.net.URLEncoder/encode (string/trim $0) "UTF-8")))})
+   (rule "ORG: Cliplink Capture URL"
+         {:type :text
+          :data #"(?U).+"
+          :start (actions/emacs-open
+                  (str "org-protocol://capture?template=X&url="
                        (java.net.URLEncoder/encode (string/trim $0) "UTF-8")))})])
 
 (defstate plumbing-rules
