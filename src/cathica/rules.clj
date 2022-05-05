@@ -141,11 +141,12 @@
           :start (sh "mpv" $0)})
    (rule "Youtube-dl: Download in Background"
          {:type :text
+
           :data regex/url
           :start (future
                    (actions/desktop-notification "Starting youtube download" $0)
                    (let [filename (actions/youtube-dl-video
-                                   $1)]
+                                   $0)]
                      (actions/desktop-notification "Download finished" filename)))})
    (rule "Gmail - msgid"
          {:type :text
